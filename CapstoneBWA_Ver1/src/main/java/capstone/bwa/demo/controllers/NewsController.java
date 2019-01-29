@@ -6,6 +6,7 @@ import capstone.bwa.demo.models.crawler.HondaxemayCrawler;
 import capstone.bwa.demo.repositories.ImageRepository;
 import capstone.bwa.demo.repositories.NewsRepository;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -37,40 +38,28 @@ public class NewsController {
         HondaxemayCrawler crawler =
                 new HondaxemayCrawler();
         crawler.setDomain("https://hondaxemay.com.vn/danh-muc-tin-tuc/tin-xe-may/");
-        List<NewsEntity> newsEntityList = null;
+        List<NewsEntity> newsEntities = new ArrayList<>();
         try {
-            newsEntityList = crawler.crawl();
+            crawler.crawl();
         } catch (IOException e) {
             e.printStackTrace();
         }
-        addNewsToDB(newsEntityList);
-        addImageToDB(crawler.getImageEntities());
-        //problem: them image co news id dang chua no
-
-        if(newsEntityList == null || newsEntityList.isEmpty())
-            return new ResponseEntity(HttpStatus.NO_CONTENT);
-
-        return new ResponseEntity(newsEntityList, HttpStatus.OK);
+        crawler.getResults().forEach((newsEntity, imageEntity) -> {
+            if(isCrawled(newsEntity) == false) {
+                newsRepository.saveAndFlush(newsEntity);
+                imageRepository.saveAndFlush(imageEntity);
+                newsEntities.add(newsEntity);
+            }
+        });
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("number-record", crawler.getResults().size() + "");
+        return ResponseEntity.ok().headers(headers).body(newsEntities);
     }
 
     private boolean isCrawled(NewsEntity news) {
         return newsRepository.existsByTitle(news.getTitle());
     }
 
-    private void addNewsToDB(List<NewsEntity> newsEntities) {
-        newsEntities.forEach(newsEntity -> {
-            if (!isCrawled(newsEntity)) {
-                newsRepository.saveAndFlush(newsEntity);
-                System.out.println("News " + newsEntity.getTitle() + " is New.");
-            }
-        });
-    }
-
-    private void addImageToDB(List<ImageEntity> imageEntities) {
-        imageEntities.forEach(imageEntity -> {
-            imageRepository.saveAndFlush(imageEntity);
-        });
-    }
     /**
      * Returns News object
      *

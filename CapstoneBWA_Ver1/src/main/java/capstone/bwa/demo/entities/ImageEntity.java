@@ -8,7 +8,7 @@ import java.util.Objects;
 
 @Entity
 @Table(name = "Image", schema = "dbo", catalog = "BikeWorldDB")
-public class ImageEntity {
+public class ImageEntity implements Serializable{
     private int id;
     private String url;
     private String type;
@@ -117,7 +117,7 @@ public class ImageEntity {
         this.eventByOwnId = eventByOwnId;
     }
 //
-    @ManyToOne
+    @ManyToOne(cascade = {CascadeType.ALL})
     @JoinColumn(name = "ownId", referencedColumnName = "id",insertable = true, updatable = true)
     public NewsEntity getNewsByOwnId() {
         return newsByOwnId;

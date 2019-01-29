@@ -1,12 +1,13 @@
 package capstone.bwa.demo.entities;
 
 import javax.persistence.*;
+import java.io.Serializable;
 import java.util.Collection;
 import java.util.Objects;
 
 @Entity
 @Table(name = "News", schema = "dbo", catalog = "BikeWorldDB")
-public class NewsEntity {
+public class NewsEntity implements Serializable {
     private int id;
     private String title;
     private String description;

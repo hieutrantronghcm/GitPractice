@@ -13,21 +13,30 @@ import java.util.List;
 import java.util.Map;
 
 // class crawl cac bai viet tren trang webike.vn
-public class WeBikeCrawler {
-    private String domainURL;
+public class WebikeCrawler {
+    private String domain;
+
+    public String getDomain() {
+        return domain;
+    }
+
+    public void setDomain(String domain) {
+        this.domain = domain;
+    }
+
     private Map<String, String> mainCategory;
     private List<String> newsUrlList = new ArrayList<>();
 
 
 
-    public WeBikeCrawler(String domainURL) {
+    public WebikeCrawler() {
         this.mainCategory = new HashMap<>();
-        this.domainURL = domainURL;
         this.newsUrlList = new ArrayList<>();
     }
 
     public static void main(String[] args) {
-        WeBikeCrawler crawler = new WeBikeCrawler("https://www.webike.vn/media/");
+        WebikeCrawler crawler = new WebikeCrawler();
+        crawler.setDomain("https://www.webike.vn/media/");
         try {
             crawler.getMainCategoryURL();
             for (Map.Entry category: crawler.getMainCategory().entrySet()) {
@@ -63,7 +72,7 @@ public class WeBikeCrawler {
     }
 
     public void getMainCategoryURL() throws IOException {
-        Document document = Jsoup.connect(domainURL).get();
+        Document document = Jsoup.connect(domain).get();
         Elements categories = document.select("ul.menu li a");
         String title;
         for (Element category: categories) {

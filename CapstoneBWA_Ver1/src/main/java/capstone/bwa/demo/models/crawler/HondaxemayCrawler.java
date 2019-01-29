@@ -10,72 +10,135 @@ import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
 
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 public class HondaxemayCrawler {
     private String domain;
-    private Map<String, String> newsCategories;
     private List<String> pages;
     private List<String> newsUrls;
     private final String END_LINE_CHAR = "\n";
-    private List<ImageEntity> imageEntities;
+//    private List<ImageEntity> imageEntities;
+    private HashMap<NewsEntity, ImageEntity> results;
 
     public HondaxemayCrawler() {
-        this.newsCategories = new HashMap<>();
+//        this.newsCategories = new HashMap<>();
         this.newsUrls = new ArrayList<>();
         this.pages = new ArrayList<>();
-        this.imageEntities = new ArrayList<>();
+//        this.imageEntities = new ArrayList<>();
+        results = new HashMap<>();
     }
 
-    public List<NewsEntity> crawl() throws IOException {
-        List<NewsEntity> newsEntityList = new ArrayList<>();
+    public static void main(String[] args) {
+        HondaxemayCrawler crawler = new HondaxemayCrawler();
+        crawler.setDomain("https://hondaxemay.com.vn/danh-muc-tin-tuc/tin-xe-may/");
+        try {
+            crawler.crawl();
+            for (Map.Entry entry : crawler.getResults().entrySet()) {
+                NewsEntity newsEntity = (NewsEntity) entry.getKey();
+                System.out.println("===== Title =====");
+                System.out.println(newsEntity.getTitle());
+                System.out.println("===== Description =====");
+                System.out.println(newsEntity.getDescription());
+
+                ImageEntity imageEntity = (ImageEntity) entry.getValue();
+                StringTokenizer stringTokenizer = new StringTokenizer(imageEntity.getUrl(), ",");
+                while (stringTokenizer.hasMoreElements()) {
+                    System.out.println(stringTokenizer.nextToken());
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void crawl() throws IOException {
+//        List<NewsEntity> newsEntityList = new ArrayList<>();
 
         getPagesLink();
 
         getAllNewsLink();
+        for (String url: newsUrls) {
+//            System.out.println("vo for");
+//            System.out.println(url);
+            if (url.equals("https://hondaxemay.com.vn/tin-tuc/honda-winner-150-phoi-mau-moi-phong-cach-cung-tem-xe-rieng-biet-doi-dien-mao-them-tao-bao-2/")){
 
-        NewsEntity newsEntity;
-        for (String newsURL: newsUrls) {
-            newsEntity = crawlNews(newsURL);
-            if(newsEntity.getImgThumbnailUrl() != null)
-                newsEntityList.add(newsEntity);
+//                System.out.println("Remove");
+                newsUrls.remove(url);
+                break;
+            }
+
+
         }
 
-        return newsEntityList;
+//        NewsEntity newsEntity;
+//        Map.Entry<NewsEntity, ImageEntity> newsEntry;
+        String url =
+"https://hondaxemay.com.vn/tin-tuc/honda-winner-150-phoi-mau-moi-phong-cach-cung-tem-xe-rieng-biet-doi-dien-mao-them-tao-bao/";
+//        System.out.println(url);
+//        crawlNews(url);
+//        url = "https://hondaxemay.com.vn/tin-tuc/honda-winner-150-phoi-mau-moi-phong-cach-cung-tem-xe-rieng-biet-doi-dien-mao-them-tao-bao-2/";
+//        System.out.println(url);
+//        crawlNews(url);
+//        System.out.println(this.results.size());
+        for (String newsURL: newsUrls) {
+//            crawlNews(newsURL);
+//            System.out.println(newsURL);
+            crawlNews(newsURL);
+//            if(newsEntity.getImgThumbnailUrl() != null)
+//                newsEntityList.add(newsEntity);
+//            break;
+        }
+
+//        this.results.forEach((newsEntity, imageEntity) -> {
+//            newsEntity;
+//            imageEntity;
+//        });
+//        return this.results;
     }
 
-    public NewsEntity crawlNews(String newsURL) throws IOException {
+    public void crawlNews(String newsURL) throws IOException {
+        ImageEntity imageEntity = new ImageEntity();
+        String url = crawlImages(newsURL);
+        imageEntity.setUrl(url);
+        if(imageEntity.getUrl().equals(""))
+            return;
         String title = crawlTitle(newsURL);
+        String description = crawlText(newsURL);
+        NewsEntity newsEntity = new NewsEntity();
+        newsEntity.setTitle(title);
+        newsEntity.setDescription(description);
+        imageEntity.setNewsByOwnId(newsEntity);
+//        if(!imageEntities.isEmpty()) {
+        newsEntity.setImgThumbnailUrl(getFirstImageURL(imageEntity));
+//            for (ImageEntity imageEntity: imageEntities) {
+//                imageEntity.setNewsByOwnId(news);
+//                this.imageEntities.add(imageEntity);
+//            }
         List<ImageEntity> imageEntities = new ArrayList<>();
-        String description = crawlContent(newsURL, imageEntities);
-
-        NewsEntity news = new NewsEntity();
-        news.setTitle(title);
-        news.setDescription(description);
-
-        if(!imageEntities.isEmpty()) {
-            news.setImgThumbnailUrl(imageEntities.get(0).getUrl());
-            for (ImageEntity imageEntity: imageEntities) {
-                imageEntity.setNewsByOwnId(news);
-                this.imageEntities.add(imageEntity);
-            }
-//            news.setImagesById(imageEntities);
-        }
+        imageEntities.add(imageEntity);
+            newsEntity.setImagesById(imageEntities);
+//        }
 //        news.setCreatorId(null);
-//        news.setCategoryId(null);
+//        newsEntity.setCategoryId(null);
 //        news.setEditorId(null);
-//        news.setCreatedTime(null);
+        newsEntity.setCreatedTime(java.time.LocalDate.now().toString());
 //        news.setEditedTime(null);
-        news.setStatus(NewsStatus.PENDING.toString());
+        newsEntity.setStatus(NewsStatus.PENDING.toString());
 //        news.setCommentsById(null);
 //        news.setAccountByCreatorId(null);
 //        news.setCategoryByCategoryId(null);
 //        news.setAccountByEditorId(null);
+//        System.out.println(newsEntity);
+        this.results.put(newsEntity, imageEntity);
+//        return news;
+    }
 
-        return news;
+    private String getFirstImageURL(ImageEntity imageEntity) {
+        if(imageEntity != null && !imageEntity.getUrl().equals("")) {
+            StringTokenizer tokenizer = new StringTokenizer(imageEntity.getUrl(), ",");
+            return tokenizer.nextToken();
+        }
+        return null;
     }
 
     private String crawlTitle(String newsURL) throws IOException {
@@ -87,7 +150,7 @@ public class HondaxemayCrawler {
         return null;
     }
 
-    private String crawlContent(String newsURL, List<ImageEntity> imageEntities) throws IOException {
+    private String crawlText(String newsURL) throws IOException {
         //format cua content:
         //cuoi moi doan se ket thuc bang ky tu \n
         //image se de truc tiep chuoi url
@@ -96,16 +159,19 @@ public class HondaxemayCrawler {
         Document document = Jsoup.connect(newsURL).get();
         Elements divElements = document.select("div#content-print div.editable");
         String content = "";
+//        ImageEntity imageEntity = new ImageEntity();
         for (Element divElement: divElements) {
 
             for (Element childEl: divElement.children()) {
                 if(childEl.tagName().equals("p")) {
-                    content += handlePElement(childEl, imageEntities);
+//                    content += handlePElement(childEl, imageEntity);
+                    content += childEl.text() + END_LINE_CHAR;
                 } else if(childEl.tagName().equals("ul") || childEl.tagName().equals("ol")){
-                    content += handleUlLiElement(childEl, imageEntities);
+                    content += handleUlLiElement(childEl);
                 } else {
                     //ko xu ly truong hop the <table>
-                    content += handlePElement(childEl, imageEntities);
+//                    content += handlePElement(childEl, imageEntity);
+                    content += childEl.text() + END_LINE_CHAR;
                 }
             }
         }
@@ -116,37 +182,49 @@ public class HondaxemayCrawler {
         return content;
     }
 
-    private String handlePElement(Element pElement, List<ImageEntity> imageEntities) {
-        //cac TH khi gap the <p>
-        //1. chi chua text
-        //2. chi chua img
-        //3. chua text + img
-
-        ImageEntity imageEntity;
-        //case 3
-        if (pElement.hasText() && !pElement.getElementsByAttribute("src").isEmpty()) {
-            String imgs = "";
-            for (Element img: pElement.getElementsByAttribute("src")) {
-                imageEntity = handleImgElement(img);
-                imageEntities.add(imageEntity);
-                imgs += imageEntity.getUrl() + END_LINE_CHAR;
-            }
-            return pElement.text() + END_LINE_CHAR + imgs;
-        } else if(pElement.hasText() && pElement.getElementsByAttribute("src").isEmpty()) {
-            return pElement.text() + END_LINE_CHAR;
-        } else {
-            //case 2
-            String imgs = "";
-            for (Element element: pElement.getElementsByAttribute("src")) {
-                imageEntity = handleImgElement(element);
-                imageEntities.add(imageEntity);
-                imgs += imageEntity.getUrl() + END_LINE_CHAR;
-            }
-            return imgs;
+    private String crawlImages(String newsUrl) throws IOException {
+        Document document = Jsoup.connect(newsUrl).get();
+        Elements imgElements = document.select("div#content-print div.editable img[src]");
+        String imgUrls = "";
+        for (int i = 0; i < imgElements.size(); i++) {
+            if(i == (imgElements.size() - 1)) //last element
+                imgUrls += imgElements.get(i).attr("src");
+            else imgUrls += imgElements.get(i).attr("src") + ",";
         }
+        return imgUrls;
     }
 
-    private String handleUlLiElement(Element ulElement, List<ImageEntity> imageEntities) {
+//    private String handlePElement(Element pElement) {
+//        //cac TH khi gap the <p>
+//        //1. chi chua text
+//        //2. chi chua img
+//        //3. chua text + img
+//
+//        //case 3
+//        if (pElement.hasText() && !pElement.getElementsByAttribute("src").isEmpty()) {
+//            String imgs = "";
+//            for (Element img: pElement.getElementsByAttribute("src")) {
+////                imageEntity = handleImgElement(img);
+////                imageEntities.add(imageEntity);
+////                imgs += imageEntity.getUrl() + END_LINE_CHAR;
+//            }
+////            return pElement.text() + END_LINE_CHAR + imgs;
+//            return pElement.text() + END_LINE_CHAR;
+//        } else if(pElement.hasText() && pElement.getElementsByAttribute("src").isEmpty()) {
+//            return pElement.text() + END_LINE_CHAR;
+//        } else {
+//            //case 2
+//            String imgs = "";
+//            for (Element element: pElement.getElementsByAttribute("src")) {
+////                imageEntity = handleImgElement(element);
+//                imageEntities.add(imageEntity);
+//                imgs += imageEntity.getUrl() + END_LINE_CHAR;
+//            }
+//            return imgs;
+//        }
+//    }
+
+    private String handleUlLiElement(Element ulElement) {
         //cac TH khi gap the <ul><li>
         //1. li chi chua img
         //2. li chi chua text
@@ -154,44 +232,44 @@ public class HondaxemayCrawler {
         //4. li chua text long trong nhieu element, chua <div> <img/> </div>
         //5. li chua text long trong nhieu element, sau có <img>
         String content = "";
-        ImageEntity imageEntity;
         for (Element liElement: ulElement.children()) {
             //case 2
-            if (liElement.children().isEmpty()) {
-                if(!liElement.text().equals("")) {
-                    content += "- " + liElement.text() + END_LINE_CHAR;
-                }
-                continue;
-            }
+//            if (liElement.children().isEmpty()) {
+//                if(!liElement.text().equals("")) {
+//                    content += "- " + liElement.text() + END_LINE_CHAR;
+//                }
+//                continue;
+//            }
 
+            content += "- " + liElement.text() + END_LINE_CHAR;
             //case 1
-            if (liElement.children().get(0).tagName().equals("img")) {
-                imageEntity = handleImgElement(liElement.children().get(0));
-                imageEntities.add(imageEntity);
-                content += imageEntity.getUrl() + END_LINE_CHAR;
-                continue;
-            }
+//            if (liElement.children().get(0).tagName().equals("img")) {
+////                imageEntity = handleImgElement(liElement.children().get(0));
+//                imageEntities.add(imageEntity);
+//                content += imageEntity.getUrl() + END_LINE_CHAR;
+//                continue;
+//            }
 
             //case 4 case 5
-            if (liElement.hasText() && !liElement.getElementsByAttribute("src").isEmpty()) {
-                content += "- " + liElement.text() + END_LINE_CHAR;
-                imageEntity = handleImgElement(liElement.getElementsByAttribute("src").last());
-                imageEntities.add(imageEntity);
-                content += imageEntity.getUrl() + END_LINE_CHAR;
-            } else {
-                //case 3
-                content += "- " + liElement.text() + END_LINE_CHAR;
-            }
+//            if (liElement.hasText() && !liElement.getElementsByAttribute("src").isEmpty()) {
+//                content += "- " + liElement.text() + END_LINE_CHAR;
+////                imageEntity = handleImgElement(liElement.getElementsByAttribute("src").last());
+////                imageEntities.add(imageEntity);
+////                content += imageEntity.getUrl() + END_LINE_CHAR;
+//            } else {
+//                //case 3
+//                content += "- " + liElement.text() + END_LINE_CHAR;
+//            }
         }
         return content;
     }
 
-    private ImageEntity handleImgElement(Element imgElement) {
-        ImageEntity imageEntity = new ImageEntity();
-        imageEntity.setUrl(imgElement.attr("src"));
+    private String handleImgElement(Element imgElement) {
+//        ImageEntity imageEntity = new ImageEntity();
+//        imageEntity.setUrl(imgElement.attr("src"));
 //        imageEntity.setStatus("");
 //        imageEntity.setType("");
-        return imageEntity;
+        return imgElement.attr("src");
     }
 
     //add all news link to list pages
@@ -263,13 +341,6 @@ public class HondaxemayCrawler {
 
 
 
-    public List<ImageEntity> getImageEntities() {
-        return imageEntities;
-    }
-
-    public void setImageEntities(List<ImageEntity> imageEntities) {
-        this.imageEntities = imageEntities;
-    }
 
     public String getDomain() {
         return domain;
@@ -277,14 +348,6 @@ public class HondaxemayCrawler {
 
     public void setDomain(String domain) {
         this.domain = domain;
-    }
-
-    public Map<String, String> getNewsCategories() {
-        return newsCategories;
-    }
-
-    public void setNewsCategories(Map<String, String> newsCategories) {
-        this.newsCategories = newsCategories;
     }
 
     public List<String> getNewsUrls() {
@@ -301,5 +364,13 @@ public class HondaxemayCrawler {
 
     public void setPages(List<String> pages) {
         this.pages = pages;
+    }
+
+    public HashMap<NewsEntity, ImageEntity> getResults() {
+        return results;
+    }
+
+    public void setResults(HashMap<NewsEntity, ImageEntity> results) {
+        this.results = results;
     }
 }
